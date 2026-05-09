@@ -5,3 +5,9 @@ const nextConfig = {
 }
 
 module.exports = nextConfig
+{
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "@next/next/no-img-element": "off"
+  }
+}
