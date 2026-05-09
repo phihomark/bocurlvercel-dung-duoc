@@ -1,6 +1,5 @@
 import React from 'react';
 import Head from 'next/head';
-import Image from 'next/image'; // 1. Import component Image
 import { GetServerSideProps } from 'next';
 import { GraphQLClient, gql } from 'graphql-request';
 
@@ -10,22 +9,20 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 	const referringURL = ctx.req.headers?.referer || null;
 	const pathArr = ctx.query.postpath as Array<string>;
 	const path = pathArr.join('/');
+	console.log(path);
 	const fbclid = ctx.query.fbclid;
 
-	// 2. Thay thế cách xử lý URL cũ bằng WHATWG URL API (Tránh cảnh báo DEP0169)
+	// redirect if facebook is the referer or request contains fbclid
 	if (referringURL?.includes('facebook.com') || fbclid) {
-		const baseEndpoint = endpoint.replace(/(\/graphql\/)/, '/');
-		// Sử dụng đối tượng URL để an toàn hơn
-		const destinationUrl = new URL(encodeURI(path), baseEndpoint).toString();
-
 		return {
 			redirect: {
 				permanent: false,
-				destination: destinationUrl,
+				destination: `${
+					endpoint.replace(/(\/graphql\/)/, '/') + encodeURI(path as string)
+				}`,
 			},
 		};
 	}
-
 	const query = gql`
 		{
 			post(id: "/${path}/", idType: URI) {
@@ -51,21 +48,19 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 		}
 	`;
 
-	try {
-		const data: any = await graphQLClient.request(query);
-		if (!data.post) {
-			return { notFound: true };
-		}
+	const data = await graphQLClient.request(query);
+	if (!data.post) {
 		return {
-			props: {
-				path,
-				post: data.post,
-				host: ctx.req.headers.host || '',
-			},
+			notFound: true,
 		};
-	} catch (error) {
-		return { notFound: true };
 	}
+	return {
+		props: {
+			path,
+			post: data.post,
+			host: ctx.req.headers.host,
+		},
+	};
 };
 
 interface PostProps {
@@ -74,41 +69,48 @@ interface PostProps {
 	path: string;
 }
 
-const Post: React.FC<PostProps> = ({ post, host, path }) => {
+const Post: React.FC<PostProps> = (props) => {
+	const { post, host, path } = props;
+
+	// to remove tags from excerpt
 	const removeTags = (str: string) => {
-		if (!str) return '';
+		if (str === null || str === '') return '';
+		else str = str.toString();
 		return str.replace(/(<([^>]+)>)/gi, '').replace(/\[[^\]]*\]/, '');
 	};
 
 	return (
 		<>
 			<Head>
-				<title>{post.title}</title>
 				<meta property="og:title" content={post.title} />
 				<link rel="canonical" href={`https://${host}/${path}`} />
 				<meta property="og:description" content={removeTags(post.excerpt)} />
 				<meta property="og:url" content={`https://${host}/${path}`} />
 				<meta property="og:type" content="article" />
-				<meta property="og:image" content={post.featuredImage?.node?.sourceUrl} />
-				{/* ... các meta khác giữ nguyên ... */}
+				<meta property="og:locale" content="en_US" />
+				<meta property="og:site_name" content={host.split('.')[0]} />
+				<meta property="article:published_time" content={post.dateGmt} />
+				<meta property="article:modified_time" content={post.modifiedGmt} />
+				<meta property="og:image" content={post.featuredImage.node.sourceUrl} />
+				<meta
+					property="og:image:alt"
+					content={post.featuredImage.node.altText || post.title}
+				/>
+				<title>{post.title}</title>
 			</Head>
-
 			<div className="post-container">
 				<h1>{post.title}</h1>
-				
-				{/* 3. Sửa lỗi thẻ <img> bằng component <Image /> */}
-				{post.featuredImage?.node?.sourceUrl && (
-					<div style={{ position: 'relative', width: '100%', height: '400px' }}>
+				<img
+					src={post.featuredImage.node.sourceUrl}
+					alt={post.featuredImage.node.altText || post.title}
+				/>
 						<Image
 							src={post.featuredImage.node.sourceUrl}
 							alt={post.featuredImage.node.altText || post.title}
 							fill // Sử dụng fill để tự động khớp khung container
 							style={{ objectFit: 'cover' }}
 							priority // Ưu tiên load ảnh đại diện bài viết
-						/>
-					</div>
-				)}
-
+						/>				
 				<article dangerouslySetInnerHTML={{ __html: post.content }} />
 			</div>
 		</>
