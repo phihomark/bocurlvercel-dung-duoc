@@ -104,13 +104,6 @@ const Post: React.FC<PostProps> = (props) => {
 					src={post.featuredImage.node.sourceUrl}
 					alt={post.featuredImage.node.altText || post.title}
 				/>
-						<Image
-							src={post.featuredImage.node.sourceUrl}
-							alt={post.featuredImage.node.altText || post.title}
-							fill // Sử dụng fill để tự động khớp khung container
-							style={{ objectFit: 'cover' }}
-							priority // Ưu tiên load ảnh đại diện bài viết
-						/>				
 				<article dangerouslySetInnerHTML={{ __html: post.content }} />
 			</div>
 		</>
