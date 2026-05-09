@@ -4,9 +4,4 @@ const nextConfig = {
   swcMinify: true,
 }
 
-// next.config.js
-module.exports = {
-  images: {
-    domains: ['tinhlm.eatatsunset.net'], // Thay bằng domain chứa ảnh của bạn
-  },
-}
+module.exports = nextConfig
